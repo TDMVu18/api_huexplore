@@ -43,7 +43,7 @@ def get_ind_loc():
     if data["is_moods"]:
         query["moods"] = {"$all": data["moods_select"]}
 
-    names_res, img_res, coor_res, ggmap_res, interests_res, moods_res = [], [], [], [], [], []
+    names_res, img_res, coor_res, ggmap_res, interests_res, moods_res, node_id = [], [], [], [], [], [], []
 
     if data["interests_select"] or data["moods_select"]:
         mongo_results = list(collection.find(query))
@@ -58,6 +58,7 @@ def get_ind_loc():
         ggmap_res.append(result["gg_map"])
         interests_res.append(result["interests"])
         moods_res.append(result["moods"])
+        node_id.append(result["node_id"])
 
     return jsonify(
             {
@@ -66,7 +67,8 @@ def get_ind_loc():
                 'coor_res': coor_res, 
                 'ggmap_res':ggmap_res, 
                 'interests_res': interests_res, 
-                'moods_res': moods_res
+                'moods_res': moods_res,
+                'node_id'   : node_id
                 }
             )
 
@@ -81,10 +83,8 @@ def get_dynamic_loc():
             {'interests': {'$in': data["interests_can"]}}
         ]
     }
-
-    names_res, img_res, coor_res, ggmap_res, interests_res, moods_res, isshow_res = [], [], [], [], [], [], []
+    names_res, img_res, coor_res, ggmap_res, interests_res, moods_res, node_id = [], [], [], [], [], [], []
     mongo_results = list(collection.find(query))
-    print(mongo_results)
     for index, result in enumerate(mongo_results, start=1):
             result["order"] = index
             names_res.append(result["name"])
@@ -93,14 +93,16 @@ def get_dynamic_loc():
             ggmap_res.append(result["gg_map"])
             interests_res.append(result["interests"])
             moods_res.append(result["moods"])   
-            isshow_res.append(random.choice([False, True]))
+            node_id.append(result["node_id"])
     
     filter_df = candidate_df = pd.DataFrame(
         {'names_res':names_res, 
          'img_res': img_res, 
          'coor_res': coor_res, 
          'ggmap_res':ggmap_res, 
-         'moods_res': moods_res
+         'moods_res': moods_res,
+         'interests_res': interests_res,
+          'node_id'   : node_id
          }
     )
     filter_df['geometry'] = [Point(float(place_dict[i]['long']),float(place_dict[i]['lat'])) for i in names_res]
@@ -119,7 +121,9 @@ def get_dynamic_loc():
     filter_df = filter_df[polygon.contains(candidate_df['geometry'])==True]
     filter_df = filter_df[candidate_df.names_res.isin(place_routed) == False]
     near_places = list(filter_df.names_res)
-    candidate_df['is_show_res'] = candidate_df.names_res.isin(near_places)
+    if len(near_places) > 16:
+        near_places=near_places[:17]
+    candidate_df['isshow_res'] = candidate_df.names_res.isin(near_places)
     candidate_df = candidate_df.drop(columns='geometry')
     
     return jsonify(candidate_df.to_dict(orient='list'))
@@ -127,6 +131,15 @@ def get_dynamic_loc():
 @app.route('/check-place-dict', methods = ['GET'])
 def check_place_dict():
     return jsonify(place_dict)
+
+@app.route('/find-route', methods = ['POST'])
+def find_route():
+    data = request.get_json()
+    origin_node = data["origin_node"]
+    destination_node = data["destination_node"]
+    route_nodes = ox.routing.shortest_path(G, origin_node, destination_node, weight="length")
+    points_list = [[G.nodes[node]['y'],G.nodes[node]['x']] for node in route_nodes]
+    return points_list
 
 if __name__ == "__main__":
     app.run(debug= True)
