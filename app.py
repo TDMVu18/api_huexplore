@@ -5,7 +5,8 @@ from time import time
 import pandas as pd
 from pymongo import MongoClient
 import osmnx as ox
-
+from shapely import Point
+import geopandas as gpd
 
 app = Flask(__name__)
 
@@ -17,6 +18,48 @@ G = ox.load_graphml('graph.graphml')
 
 def filter_candidate_locations(df):
     return df
+
+#### Lấy place từ db -> ex: {"Đại Nội": {'lat':16.2, 'long':107.4}} 
+def place_dict()->dict:
+    ggres =  bruh
+    name_list = [i['name'] for i in ggres]
+    geometry = [Point(float(i['coordinate'][0]),float(i['coordinate'][1])) for i in ggres]
+    x = [float(i['coordinate'][1]) for i in ggres]
+    y = [float(i['coordinate'][0]) for i in ggres]
+    place_dict = {}
+    for i in range(len(name_list)):
+        place_dict[name_list[i]] = {'lat':x[i], 'long':y[i]}
+    return place_dict
+
+#### Lấy Fnb từ db -> ex: {"Phở": {'lat':16.2, 'long':107.4}} 
+def fnb_dict()->dict:
+    ggres =  bruh
+    name_list = [i['name'] for i in ggres]
+    geometry = [Point(float(i['coordinate'][0]),float(i['coordinate'][1])) for i in ggres]
+    x = [float(i['coordinate'][1]) for i in ggres]
+    y = [float(i['coordinate'][0]) for i in ggres]
+    place_dict = {}
+    for i in range(len(name_list)):
+        place_dict[name_list[i]] = {'lat':x[i], 'long':y[i]}
+    return place_dict
+
+### Tạo GeoDataFrame từ db_location
+def get_place_gdf():
+    geometry = [Point(float(i['coordinate'][0]),float(i['coordinate'][1])) for i in ggres]
+    d = {'name_list': name_list,
+        'geometry': geometry}
+    gdf = gpd.GeoDataFrame(d, crs="EPSG:4326")
+    return gdf
+
+### Tạo GeoDataFrame từ db_fnb
+def get_fnb_gdf():
+    geometry = [Point(float(i['coordinate'][0]),float(i['coordinate'][1])) for i in ggres]
+    d = {'name_list': name_list,
+        'geometry': geometry}
+    gdf = gpd.GeoDataFrame(d, crs="EPSG:4326")
+    return gdf
+
+
 
 @app.route('/ind-loc', methods = ['POST'])
 def get_ind_loc():
@@ -51,6 +94,13 @@ def get_ind_loc():
 
 @app.route('/dynamic-loc', methods = ['POST'])
 def get_dynamic_loc():
+    data = request.get_json()
+    ### Query candidates place from mongo 
+        # with related tag
+
+    ### 
+
+    print("", data)
     
     return "bruh"
 
